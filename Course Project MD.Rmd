@@ -1,0 +1,137 @@
+---
+title: "Predicting the Types of Biceps Curls"
+author: "Warren San Luis"
+date: "September 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, echo=FALSE, message=FALSE}
+library(data.table)
+library(caret)
+library(rpart.plot)
+```
+
+## Executive Summary
+
+The goal of this report is to detail an analysis of participants performing Unilateral Dumbbell Bicepts Curls. Using accelerometers, we look to predict the way the curls are performed.  There are five different ways (classes) that were examined.
+
+```{r get data, echo=FALSE}
+setwd("C:\\Users\\Warren\\Desktop\\Coursework\\Coursera\\Practical Machine Learning\\Course Project")
+
+if (!file.exists("modeling.csv")) {
+  download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",
+                destfile = "modeling.csv")
+}
+  
+if (!file.exists("holdout.csv")) {
+  download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",
+                destfile = "holdout.csv")
+}
+
+# READ IN CSVS
+modeling <- read.csv("modeling.csv")
+holdout <- read.csv("holdout.csv")
+```
+
+## Examining the Data
+The data was examined for data quality. After examination, it was found that the columns that contained the following terms had mostly blank or NAs: kurtosis, skewness, max, min, amplitude, var, avg, stddev. These were removed from the dataset.
+
+The main dataset analyzed contained 19,622 observations. A separate holdout dataset of 20 observations was used as an out-of-sample set and was not used in modeling.
+
+```{r remove cols, echo=FALSE}
+# Removing certain columns due to bad or lack of data in certain columns
+model_cols <- as.vector(names(modeling))
+include_flag <- !grepl("kurtosis|skewness|max|min|amplitude|var|avg|stddev", model_cols)
+modeling2 <- modeling[, include_flag][,-c(1:7)]
+```
+
+## Fitting the Models
+
+The main dataset was split into a training (70% of data) and test set (30% of data). Each model was first fit to the training set and checked on the test set. The models used were a decision tree with length = 50, a linear discriminant analysis, and a quadratic discriminant analysis.
+
+Reasons for selecting/not selecting models to investigate:  
+
+* Usage of a tree allowed for more flexibility in predictions.
+* Linear discriminant analysis was used to investigate linear decision boundaries.
+* Quadtratic discriminant analysis was used to investigate more non-linear decision boundaries.
+* Random forests were not investigated due to long runtime.
+
+```{r traintest, echo=FALSE}
+# Removing certain columns due to bad or lack of data in certain columns
+model_cols <- as.vector(names(modeling))
+include_flag <- !grepl("kurtosis|skewness|max|min|amplitude|var|avg|stddev", model_cols)
+modeling2 <- modeling[, include_flag][,-c(1:7)]
+
+# Split modeling data into training and test sets
+set.seed(62351)
+inTrain <- createDataPartition(modeling2$classe, times = 1, p = 0.7)[[1]]
+
+training <- modeling2[inTrain,]
+testing <- modeling2[-inTrain,]
+```
+
+The results on the test set are shown in the **Appendix**.
+
+The decision tree and quadratic discriminant analysis had much stronger results than the linear discriminant analysis. The decision tree and quadratic discriminant analysis models are highly flexible and can be subject to overfitting. To help account for the flexible model fitting, we checked these models against the testing set that was set aside. The accuracy, sensitivity, and specificity were all high except for the linear discriminant analysis. The decision tree results were slightly more favorable than the quadratic discriminant analysis where the error rates were both near 10%.
+  
+## Final Results
+When applying the decision tree results to the 20 observations that were held out from the modeling, 18 of the 20 observations were correctly predicted which implies an out-of-sample error of 10%.
+
+```{r fits, echo=FALSE, message=FALSE}
+# CREATE DECISION TREE AND CONFUSION MATRIX
+
+# Fit tree
+fit_dectree <- train(classe ~ ., data = training, method = "rpart", tuneLength = 50)
+
+# Create predictions in testing
+pred_dectree <- predict(fit_dectree, newdata = testing)
+
+# Attach predictions to modeling dataset
+testing_dectree <- cbind(testing, pred_dectree)
+
+# CREATE LINEAR DISCRIMINANT ANALYSIS
+
+# Fit model
+fit_lda <- train(classe ~ ., data = training, method = "lda")
+
+# Create predictions in testing
+pred_lda <- predict(fit_lda, newdata = testing)
+
+# Attach predictions to testing dataset
+testing_lda <- cbind(testing, pred_lda)
+
+# CREATE QUADRATIC DISCRIMINANT ANALYSIS
+
+# Fit model
+fit_qda <- train(classe ~ ., data = training, method = "qda")
+
+# Create predictions in testing
+pred_qda <- predict(fit_qda, newdata = testing)
+
+# Attach predictions to modeling dataset
+testing_qda <- cbind(testing, pred_qda)
+```
+
+## Appendix
+
+**FIGURE A - DECISION TREE (LENGTH = 50)**
+```{r dectree, echo=FALSE}
+# Create confusion matrix on testing data
+confusionMatrix(testing_dectree$pred_dectree, testing_dectree$classe)
+```
+
+**FIGURE B - LINEAR DISCRIMINANT ANALYSIS**
+```{r lda, echo=FALSE}
+# Create confusion matrix on testing data
+confusionMatrix(testing_lda$pred_lda, testing_lda$classe)
+```
+
+**FIGURE C - QUADRATIC DISCRIMINANT ANALYSIS**
+```{r qda, echo=FALSE}
+# Create confusion matrix on testing data
+confusionMatrix(testing_qda$pred_qda, testing_qda$classe)
+```
