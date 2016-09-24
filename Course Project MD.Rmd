@@ -79,7 +79,7 @@ The results on the test set are shown in the **Appendix**.
 The decision tree and quadratic discriminant analysis had much stronger results than the linear discriminant analysis. The decision tree and quadratic discriminant analysis models are highly flexible and can be subject to overfitting. To help account for the flexible model fitting, we checked these models against the testing set that was set aside. The accuracy, sensitivity, and specificity were all high except for the linear discriminant analysis. The decision tree results were slightly more favorable than the quadratic discriminant analysis where the error rates were both near 10%.
   
 ## Final Results
-When applying the decision tree results to the 20 observations that were held out from the modeling, 18 of the 20 observations were correctly predicted which implies an out-of-sample error of 10%.
+When applying the decision tree results to the 20 observations that were held out from the modeling, 18 of the 20 observations were correctly predicted which implies an out-of-sample error of 10%. The final predictions on these 20 observations by model type are shown in the **Appendix**.
 
 ```{r fits, echo=FALSE, message=FALSE}
 # CREATE DECISION TREE AND CONFUSION MATRIX
@@ -134,4 +134,29 @@ confusionMatrix(testing_lda$pred_lda, testing_lda$classe)
 ```{r qda, echo=FALSE}
 # Create confusion matrix on testing data
 confusionMatrix(testing_qda$pred_qda, testing_qda$classe)
+```
+
+**FIGURE D - MODEL RESULTS ON HOLDOUT (20 OBSERVATIONS)**
+```{R holdout, echo=FALSE}
+
+holdout2 <- holdout[,include_flag][,-c(1:7)]
+
+# Decision tree (length = 50)
+hold_dectree <- predict(fit_dectree, newdata = holdout2)
+
+# Linear discriminant analysis
+hold_lda <- predict(fit_lda, newdata = holdout2)
+
+# Quadratic discriminant analysis
+hold_qda <- predict(fit_qda, newdata = holdout2)
+
+# Put all models together
+holdout_final <- data.table(cbind(holdout2, hold_dectree, hold_lda, hold_qda))
+
+# Print results
+holdout_final2 <- holdout_final[,.(problem_id,
+                                   hold_dectree,
+                                   hold_qda,
+                                   hold_lda)]
+holdout_final2
 ```
